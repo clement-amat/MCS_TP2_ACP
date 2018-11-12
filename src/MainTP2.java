@@ -1,9 +1,10 @@
-import Jama.EigenvalueDecomposition;
-import Jama.Matrix;
 import fr.enseeiht.danck.voice_analyzer.Extractor;
 import fr.enseeiht.danck.voice_analyzer.Field;
 import fr.enseeiht.danck.voice_analyzer.MFCC;
 import fr.enseeiht.danck.voice_analyzer.WindowMaker;
+import org.apache.commons.math3.linear.EigenDecomposition;
+import org.apache.commons.math3.linear.MatrixUtils;
+import org.apache.commons.math3.linear.RealMatrix;
 
 import java.io.File;
 import java.io.IOException;
@@ -77,12 +78,18 @@ public class MainTP2 {
         double[][] matAP = PretraitementACP.calculerVecteursMoyenne(fieldsAp);
         double[][] matTest = PretraitementACP.calculerVecteursMoyenne(fieldsTest);
 
-        Matrix mAP = new Matrix(matAP);
-        Matrix mTest = new Matrix(matTest);
+        // Covariance
+        double[][] matriceCovariance = PretraitementACP.matriceCovariance(matAP);
 
-        EigenvalueDecomposition e = mAP.eig();
-        double[] eigenValues = e.getRealEigenvalues();
-        double[] imaginary = e.getImagEigenvalues();
-        Matrix eigenVectors = e.getV();
+        // 3 Plus grands vecteurs propres
+        double[] biggestEigenValues = PretraitementACP.getBiggestEigensValues(matriceCovariance, 3);
+        RealMatrix matrix = MatrixUtils.createRealMatrix(matriceCovariance);
+        EigenDecomposition decomposition = new EigenDecomposition(matrix);
+        RealMatrix rm = decomposition.getV();
+        double [][] EigenVecors=rm.getData();
+
+
+    }
+
     }
 }
