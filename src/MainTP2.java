@@ -5,12 +5,13 @@ import fr.enseeiht.danck.voice_analyzer.WindowMaker;
 import org.apache.commons.math3.linear.EigenDecomposition;
 import org.apache.commons.math3.linear.MatrixUtils;
 import org.apache.commons.math3.linear.RealMatrix;
+import org.apache.commons.math3.stat.correlation.Covariance;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileSystems;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class MainTP2 {
 
@@ -28,6 +29,10 @@ public class MainTP2 {
     static List<float[]> moyennesBaseAP = new ArrayList<>();
     static List<float[]> moyennesBaseTest = new ArrayList<>();
 
+    static List<String> ordres;
+
+    static RealMatrix projectedAP;
+    static RealMatrix projectedTest;
 
     public static void getData(String folder, List<Field> fields, List<String> pFiles) throws IOException {
         String currentDirectory = FileSystems.getDefault().getPath(".").toAbsolutePath().toString();
@@ -69,27 +74,90 @@ public class MainTP2 {
         getData(FOLDER_TEST, fieldsTest, filesTest);
     }
 
+    private static double calculerDistance(int indiceTest, int indiceAP) {
+        return Math.sqrt(
+                Math.pow(projectedTest.getEntry(indiceTest, 0) - projectedAP.getEntry(indiceAP, 0)   , 2)
+                 + Math.pow(projectedTest.getEntry(indiceTest, 1) - projectedAP.getEntry(indiceAP, 1), 2)
+                 + Math.pow(projectedTest.getEntry(indiceTest, 2) - projectedAP.getEntry(indiceAP,2) , 2)
+                );
+    }
+
+    private static String isolerNomOdre(String nomFichier) {
+        return nomFichier.split("[_ .]")[1];
+    }
+
+    private static String ordreCorrespondantAuFichierDIndice(int i) {
+        return isolerNomOdre(filesAp.get(i));
+    }
+
+    private static Set<String> getListeOrdres(List<String>... files) {
+        Set<String> ordres = new HashSet<>();
+        for (List<String> f : files) {
+            f.forEach(nomFichier -> ordres.add(isolerNomOdre(nomFichier)));
+        }
+        return ordres;
+    }
+
     public static void main(String[] args) throws Exception {
         initCorpusAp();
         System.out.println(filesAp.size() + " fichiers dans base ap");
         initCorpusTest();
         System.out.println(filesTest.size() + " fichiers dans base test ");
 
+        // Récupérer la liste des ordres
+        ordres = getListeOrdres(filesAp, filesTest).stream().collect(Collectors.toList());
+        System.out.println("Ordres pris en compte : \n" + ordres.stream().collect(Collectors.joining(",")));
+
         double[][] matAP = PretraitementACP.calculerVecteursMoyenne(fieldsAp);
         double[][] matTest = PretraitementACP.calculerVecteursMoyenne(fieldsTest);
+
+        RealMatrix originalMatrix = MatrixUtils.createRealMatrix(matAP);
+        RealMatrix testMatrix     = MatrixUtils.createRealMatrix(matTest);
 
         // Covariance
         double[][] matriceCovariance = PretraitementACP.matriceCovariance(matAP);
 
-        // 3 Plus grands vecteurs propres
-        double[] biggestEigenValues = PretraitementACP.getBiggestEigensValues(matriceCovariance, 3);
+        // Indices des trois plus grandes valeurs propres
+        int[] biggestEigenValuesIndex = PretraitementACP.getBiggestEigensValuesIndex(matriceCovariance, 3);
         RealMatrix matrix = MatrixUtils.createRealMatrix(matriceCovariance);
         EigenDecomposition decomposition = new EigenDecomposition(matrix);
-        RealMatrix rm = decomposition.getV();
-        double [][] EigenVecors=rm.getData();
 
 
-    }
+        // Extraire les eigen vectors associés aux trois plus grande valeurs propres
+        double[][] kPlusGrandsVP = new double[3][]; // k = 3
+        for (int i = 0 ; i < biggestEigenValuesIndex.length ; i++) {
+            kPlusGrandsVP[i] = decomposition.getEigenvector(biggestEigenValuesIndex[i]).toArray();
+        }
 
+        RealMatrix kPlusGrandVPMatrix = MatrixUtils.createRealMatrix(kPlusGrandsVP);
+
+        // Projeter les données dans la nouvelle base
+        projectedAP = originalMatrix.multiply(kPlusGrandVPMatrix.transpose()); //kPlusGrandVPMatrix.multiply(originalMatrix.transpose());
+        projectedTest = testMatrix.multiply(kPlusGrandVPMatrix.transpose()); //kPlusGrandVPMatrix.multiply(testMatrix.transpose());
+
+        // Calcul de la distance
+        // pour chaque fichier de la base de test faire
+        TreeSet<KPPVResult> results;
+        double currentDistance = -1;
+        for (int i = 0 ; i < filesTest.size() ; i++) {
+            // pour chaque fichier de la base d'AP calculer distance
+            results = new TreeSet<>();
+            for (int j = 0 ; j < filesAp.size() ; j++) {
+                // => distance dans les trois inférieurs la prendre et enregistrer l'ordre correspondant
+                currentDistance = calculerDistance(i, j);
+                if (results.size() < 3) {
+                    results.add(new KPPVResult(currentDistance, j));
+                } else {
+                    Utils.insertInSetIfLowerThanOne(results, new KPPVResult(currentDistance, j));
+                }
+            }
+
+            // tous les fichiers de la base d'AP ont étés comparés => qu'a ton dit ??
+            System.out.println("Fichier " + filesTest.get(i) + " : ");
+            for (KPPVResult r : results) {
+                System.out.print(ordreCorrespondantAuFichierDIndice(r.indiceFichierAP) + " ");
+            }
+            System.out.println();
+        }
     }
 }

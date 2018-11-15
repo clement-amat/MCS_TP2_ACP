@@ -99,14 +99,20 @@ public class PretraitementACP {
     }
 
 
-    public static double[] getBiggestEigensValues(double[][] matriceCovariance, int count) {
-        double[] biggest = new double[count];
+    /**
+     * Retourne <b>l'indice</b> des n plus grandes eigen values
+     * @param matriceCovariance
+     * @param count
+     * @return
+     */
+    public static int[] getBiggestEigensValuesIndex(double[][] matriceCovariance, int count) {
+        int[] biggest = new int[count];
         RealMatrix matrix = MatrixUtils.createRealMatrix(matriceCovariance);
         EigenDecomposition decomposition = new EigenDecomposition(matrix);
         double[] eaganValues = decomposition.getRealEigenvalues();
         Arrays.sort(eaganValues);
         for (int i = eaganValues.length - 1, j = 0; i >= (eaganValues.length - count); i--, j++) {
-            biggest[j] = eaganValues[i];
+            biggest[j] = i;
         }
         return biggest;
     }
