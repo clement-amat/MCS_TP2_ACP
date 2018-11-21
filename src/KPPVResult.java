@@ -16,7 +16,6 @@ public class KPPVResult implements Comparable<KPPVResult> {
         if (this.distance == o.distance) {
             return Integer.compare(indiceFichierAP, o.indiceFichierAP);
         }
-
         return Double.compare(distance, o.distance);
     }
 }

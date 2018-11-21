@@ -76,9 +76,9 @@ public class MainTP2 {
 
     private static double calculerDistance(int indiceTest, int indiceAP) {
         return Math.sqrt(
-                Math.pow(projectedTest.getEntry(indiceTest, 0) - projectedAP.getEntry(indiceAP, 0)   , 2)
-                 + Math.pow(projectedTest.getEntry(indiceTest, 1) - projectedAP.getEntry(indiceAP, 1), 2)
-                 + Math.pow(projectedTest.getEntry(indiceTest, 2) - projectedAP.getEntry(indiceAP,2) , 2)
+                Math.pow(projectedAP.getEntry(indiceAP, 0) - projectedTest.getEntry(indiceTest, 0)   , 2)
+                 + Math.pow(projectedAP.getEntry(indiceAP, 1) - projectedTest.getEntry(indiceTest, 1), 2)
+                 + Math.pow(projectedAP.getEntry(indiceAP, 2) - projectedTest.getEntry(indiceTest,2) , 2)
                 );
     }
 
@@ -139,6 +139,7 @@ public class MainTP2 {
         // pour chaque fichier de la base de test faire
         TreeSet<KPPVResult> results;
         double currentDistance = -1;
+        float foundOrders        = 0;
         for (int i = 0 ; i < filesTest.size() ; i++) {
             // pour chaque fichier de la base d'AP calculer distance
             results = new TreeSet<>();
@@ -153,11 +154,49 @@ public class MainTP2 {
             }
 
             // tous les fichiers de la base d'AP ont étés comparés => qu'a ton dit ??
-            System.out.println("Fichier " + filesTest.get(i) + " : ");
+            System.out.println();
+            String foundOrder = findMostReccurentOrder(results);
+            System.out.println("Fichier " + filesTest.get(i));
             for (KPPVResult r : results) {
                 System.out.print(ordreCorrespondantAuFichierDIndice(r.indiceFichierAP) + " ");
             }
-            System.out.println();
+            System.out.println(" -> " + foundOrder);
+            if (isolerNomOdre(filesTest.get(i)).equals(foundOrder)) {
+                foundOrders += 1;
+                System.out.println("^^ Ok ^^");
+            } else {
+                System.out.println("^^ Erreur ^^");
+            }
         }
+        System.out.println("\n\n>> Pourcentage de reussite : " + (foundOrders / filesTest.size() * 100) + "%");
     }
+
+    private static String findMostReccurentOrder(TreeSet<KPPVResult> results) {
+        LinkedHashMap<String, Integer> count = new LinkedHashMap<>();
+        int maxCount = 0;
+        String foundOrder = "NIL";
+        for (KPPVResult r : results) {
+            if (count.containsKey(ordreCorrespondantAuFichierDIndice(r.indiceFichierAP))) {
+                count.put(
+                        ordreCorrespondantAuFichierDIndice(r.indiceFichierAP),
+                        count.get(ordreCorrespondantAuFichierDIndice(r.indiceFichierAP)) + 1
+                );
+            } else {
+                count.put(ordreCorrespondantAuFichierDIndice(r.indiceFichierAP), 1);
+            }
+        }
+        for (String order : count.keySet()) {
+            if (count.get(order) > maxCount) {
+                maxCount = count.get(order);
+            }
+        }
+        for (String order : count.keySet()) {
+            if (count.get(order) == maxCount) {
+                foundOrder = order;
+                break;
+            }
+        }
+        return foundOrder;
+    }
+
 }
